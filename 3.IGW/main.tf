@@ -112,16 +112,22 @@ data "aws_ami" "debian" {
   }
 
   filter {
-    name = "virtualization-type"
+    name   = "virtualization-type"
     values = ["hvm"]
   }
 }
 
+resource "aws_key_pair" "deployer_pub_key" {
+  key_name   = "deployer-pub-key"
+  public_key = file("./key.pub")
+}
+
 # EC2 init
 resource "aws_instance" "web_server" {
-  ami           = data.aws_ami.debian.id
-  instance_type = "t3.micro"
+  ami               = data.aws_ami.debian.id
+  instance_type     = "t3.micro"
   availability_zone = "eu-north-1a"
+  key_name          = aws_key_pair.deployer_pub_key.key_name
 
   subnet_id                   = aws_subnet.public_1.id
   vpc_security_group_ids      = [aws_security_group.web_sg.id]
@@ -129,6 +135,10 @@ resource "aws_instance" "web_server" {
 
   # user_data = "" # some script which install httpd and run's server with some static html
   user_data = file("./install-httpd.sh")
+
+  tags = {
+    Name = "web-server"
+  }
 }
 
 output "web_server_public_ip" {
